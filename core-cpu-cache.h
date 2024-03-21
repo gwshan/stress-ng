@@ -120,6 +120,7 @@ static inline void ALWAYS_INLINE shim_clflush(volatile void *ptr)
 #elif defined(DCACHE)
 #define shim_clflush(ptr)	shim_cacheflush((char *)ptr, 64, DCACHE)
 #else
+#warning "===> shim_clflush() does nothing in core-cpu-cache.h"
 #define shim_clflush(ptr)	do { } while (0) /* No-op */
 #endif
 

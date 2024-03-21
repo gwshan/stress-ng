@@ -289,7 +289,6 @@ static size_t TARGET_CLONES OPTIMIZE3 stress_vm_addr_dec(
 		if (UNLIKELY(*ptr != rnd))
 			errs++;
 	}
-
 	return errs;
 }
 

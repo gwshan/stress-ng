@@ -189,6 +189,7 @@ int shim_cacheflush(char *addr, int nbytes, int cache)
 #endif
 	return -1;
 #elif defined(HAVE_BUILTIN___CLEAR_CACHE)
+	#warning "===> HAVE_BUILTIN___CLEAR_CACHE"
 	/* More portable builtin */
 	(void)cache;
 

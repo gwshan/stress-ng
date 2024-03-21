@@ -739,7 +739,7 @@ static size_t TARGET_CLONES stress_vm_walking_flush_data(
 
 	(void)sz;
 
-	for (ptr = (uint8_t *)buf; ptr < (uint8_t *)buf_end; ptr++, val++) {
+	for (ptr = (uint8_t *)buf; ptr < (uint8_t *)buf_end; ptr += 8, val++) {
 		*(ptr + 0) = (val + 0) & 0xff;
 		shim_clflush(ptr + 0);
 		stress_asm_mb();
@@ -3223,6 +3223,7 @@ static size_t stress_vm_all(
 
 static const stress_vm_method_info_t vm_methods[] = {
 	{ "all",		stress_vm_all },
+#if 0
 	{ "cache-lines",	stress_vm_cache_lines },
 	{ "cache-stripe",	stress_vm_cache_stripe },
 	{ "checkerboard",	stress_vm_checkerboard },
@@ -3256,7 +3257,9 @@ static const stress_vm_method_info_t vm_methods[] = {
 	{ "walk-1d",		stress_vm_walking_one_data },
 	{ "walk-0a",		stress_vm_walking_zero_addr },
 	{ "walk-1a",		stress_vm_walking_one_addr },
+#endif /* 0 */
 	{ "walk-flush",		stress_vm_walking_flush_data },
+#if 0
 	{ "write64",		stress_vm_write64 },
 #if defined(HAVE_NT_STORE64)
 	{ "write64nt",		stress_vm_write64nt },
@@ -3265,6 +3268,7 @@ static const stress_vm_method_info_t vm_methods[] = {
 	{ "write1024v",		stress_vm_write1024v },
 #endif
 	{ "zero-one",		stress_vm_zero_one },
+#endif /* 0 */
 };
 
 /*
@@ -3282,8 +3286,10 @@ static size_t stress_vm_all(
 	size_t bit_errors = 0;
 
 	bit_errors = vm_methods[i].func(buf, buf_end, sz, args, max_ops);
-	i++;
-	if (i >= SIZEOF_ARRAY(vm_methods))
+	fprintf(stdout, "%s: i=%ld [%s], bit_errors=%ld\n",
+		i, vm_methods[i].name, bit_errors);
+
+	if (++i >= SIZEOF_ARRAY(vm_methods))
 		i = 1;
 
 	return bit_errors;
@@ -3328,6 +3334,7 @@ static int stress_vm_child(stress_args_t *args, void *ctxt)
 	bool vm_keep = false;
 	stress_vm_context_t *context = (stress_vm_context_t *)ctxt;
 	const stress_vm_func func = context->vm_method->func;
+	uint64_t old_bit_error_count = 0ULL;
 
 	stress_catch_sigill();
 
@@ -3380,7 +3387,16 @@ static int stress_vm_child(stress_args_t *args, void *ctxt)
 
 		no_mem_retries = 0;
 		(void)stress_mincore_touch_pages(buf, buf_sz);
+
+		old_bit_error_count = *(context->bit_error_count);
 		*(context->bit_error_count) += func(buf, buf_end, buf_sz, args, max_ops);
+
+		if (*(context->bit_error_count) > old_bit_error_count) {
+			fprintf(stdout, "===> %s: bit_error_count 0x%lx -> 0x%lx after [%s]\n",
+				__func__, old_bit_error_count,
+				*(context->bit_error_count),
+				context->vm_method->name);
+		} 
 
 		if (vm_hang == 0) {
 			while (stress_continue_vm(args)) {
@@ -3481,7 +3497,7 @@ static int stress_vm(stress_args_t *args)
 	(void)shim_msync(context.bit_error_count, page_size, MS_SYNC);
 	if (*context.bit_error_count > 0) {
 		pr_fail("%s: detected %" PRIu64 " bit errors while "
-			"stressing memory\n",
+			"stressing memory-0\n",
 			args->name, *context.bit_error_count);
 		ret = EXIT_FAILURE;
 	}
